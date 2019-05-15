@@ -1,0 +1,33 @@
+{
+  "name": "js-engine",
+  "version": "0.0.1",
+  "description": "a node rule engine with time task",
+  "main": "index.js",
+  "scripts": {
+    "test": "test"
+  },
+  "dependencies": {
+    "jsonre": "^0.0.1",
+    "node-schedule": "^1.3.2",
+    "lodash": "^4.17.11",
+    "is": "^3.3.0"
+  },
+  "devDependencies": {
+    "ioredis": "^4.9.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/leoDreamer/js-engine.git"
+  },
+  "keywords": [
+    "node",
+    "javascript",
+    "engine"
+  ],
+  "author": "leo",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/leoDreamer/js-engine/issues"
+  },
+  "homepage": "https://github.com/leoDreamer/js-engine#readme"
+}
