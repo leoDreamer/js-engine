@@ -7,22 +7,11 @@ class Engine extends Jrn {
       allowUndefinedFacts: true
     })
     this.redis = redisCli
+    // 存储rulename 和 具体rule/timer的索引map
     this.ruleMap = new Map()
   }
 
-  async ensureRule (ruleName) {
-    // memory cache ensure
-    if (this.ruleMap.has(ruleName)) return true
-
-    // redis cache ensure
-    const definition = await this.redis.hget(msg.RULEMAP, ruleName)
-    if (definition) {
-      super.addRule(JSON.parse(definition))
-    } else {
-      throw new Error(msg.ERR_RULE_EXIST)
-    }
-  }
-
+  // 删除规则
   async deleteRule (ruleName) {
     // delete redis cache
     await this.redis.hdel(msg.ruleMap, ruleName)
@@ -39,24 +28,50 @@ class Engine extends Jrn {
     }
   }
 
-  async addRule (ruleName, definition) {
+  // 增加规则
+  async addRule (ruleName, definition, opt = { cache: true }) {
     // add rule in JRN
-    if (this.ruleMap.has(ruleName)) throw new Error(msg.ERR_RULE_EXIST)
     const define = this._ruleFormat(definition)
 
     const { rules } = super.addRule(define.rule)
     this.ruleMap.set(ruleName, `${rules.length - 1},${define.timer.map(t => t.id).join(',')}`)
 
     // save rule in redis
-    await this.redis.hset(msg.RULEMAP, ruleName, JSON.stringify(definition))
+    if (opt.cache) await this.redis.hset(msg.RULEMAP, ruleName, JSON.stringify(definition))
     return true
   }
 
-  async addFact (factId, value) {
-    await this.redis.hset(msg.FACTMAP, factId, value)
+  // 增加fact
+  async addFact (factId, value, opt = { cache: true }) {
+    if (opt.cache) await this.redis.hset(msg.FACTMAP, factId, value)
     super.addFact(factId, value)
   }
 
+  // 清理runtime中的规则
+  clearRules () {
+    super.clearRules()
+    this.ruleMap = new Map()
+  }
+
+  // 从redis缓存加载规则
+  async addRulesFromCache () {
+    const rules = await this.redis.hgetall(msg.RULEMAP)
+    rules.forEach((r) => {
+      const key = Object.keys(r)[0]
+      this.addRule(key, JSON.stringify(r[key]), { cache: false })
+    })
+  }
+
+  // 从redis缓存加载fact
+  async addFactsFromCache () {
+    const facts = await this.redis.hgetall(msg.FACTMAP)
+    facts.forEach((r) => {
+      const key = Object.keys(r)[0]
+      this.addFact(key, r[key], { cache: false })
+    })
+  }
+
+  // 将规则格式化，拆分组合定时规则
   _ruleFormat (definition) {
     const { timers } = definition
     if (!timers) return { rule: definition, timer: [] }
