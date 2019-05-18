@@ -1,4 +1,5 @@
 const schedule = require('node-schedule')
+const _ = require('lodash')
 
 class Timer {
   constructor(engine) {
@@ -7,9 +8,11 @@ class Timer {
   }
 
   addTimer (name, rule, start, end) {
-    const timer = schedule.scheduleJob({ start, end, rule }, function(name){
-      console.log(`Time for tea - ${x}`);
-    }.bind(null, name))
+    // 同名timer不重复创建
+    if (this.timers.has(name)) return
+    const timer = schedule.scheduleJob(_.pickBy({ start, end, rule }), function(name, engine){
+      engine.run({ [name]: true })
+    }.bind(null, name, this.engine))
     this.timers.set(name, timer)
   }
 
@@ -17,6 +20,13 @@ class Timer {
     const timer = this.timers.get(name)
     if (timer) timer.cancel()
     this.timers.delete(name)
+  }
+
+  clear () {
+    this.timers.values(t => {
+      t.cancel()
+    })
+    this.timers.clear()
   }
 }
 
