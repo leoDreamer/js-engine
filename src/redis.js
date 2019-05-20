@@ -9,8 +9,8 @@ class Redis {
       db: 0
     }
     this.engine = engine
-    this.subClient = this.getClient()
-    this.pubClient = this.getClient()
+    this.subClient = this._getClient()
+    this.pubClient = this._getClient()
   }
 
   get topicMap () {
@@ -21,7 +21,11 @@ class Redis {
     }
   }
 
-  getClient () {
+  get client () {
+    return this.pubClient
+  }
+
+  _getClient () {
     const { config } = this
     return config.cluster
       ? new Ioredis.Cluster(config.nodes)
@@ -33,23 +37,26 @@ class Redis {
     this.subClient.on('message', function (channel, message) {
       console.log('Receive message %s from channel %s', message, channel)
       switch (channel) {
-        case this.topicMap.ADDRULE:
-          console.log(message)
+        case _self.topicMap.ADDRULE:
+          const rule = JSON.parse(message)
+          _self.engine.addRule(rule.name, rule.value, { pub: false })
           break;
-        case this.topicMap.ADDFACT:
+        case _self.topicMap.ADDFACT:
+          const fact = JSON.parse(message, { pub: false })
+          const key = Object.keys(fact)[0]
+          _self.engine.addFact(key, fact[key])
           break;
-        case this.topicMap.DELRULE:
+        case _self.topicMap.DELRULE:
+          _self.engine.deleteRule(message, { pub: false })
           break;
         default:
           break;
       }
     })
     return new Promise((resolve, reject) => {
-      console.log(Object.keys(this.topicMap).join(','))
-      this.subClient.subscribe(Object.keys(this.topicMap).join(','), function (err, count) {
+      this.subClient.subscribe('ADDRULE','ADDFACT', 'DELRULE', function (err, count) {
+        _self.subed = true
         if (err) reject(err)
-        _self.pubClient.publish('ADDRULE', 'hello world')
-        console.log('111111', err, count)
         resolve()
       })
     })

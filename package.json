@@ -1,13 +1,13 @@
 {
   "name": "js-engine",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "description": "a node rule engine with time task",
   "main": "index.js",
   "scripts": {
     "test": "test"
   },
   "dependencies": {
-    "jsonre": "^0.0.1",
+    "jsonre": "^0.0.5",
     "node-schedule": "^1.3.2",
     "lodash": "^4.17.11",
     "is": "^3.3.0"

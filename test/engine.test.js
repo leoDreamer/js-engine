@@ -1,12 +1,9 @@
-const Redis = require('ioredis')
 const Engine = require('../src/engine')
 
-const redisCli = new Redis()
-
-
-const engine = new Engine(redisCli, {
+const engine = new Engine({
   runTimer: true, // 这个进程是否启动定时器
-  updateFactBeforeRun: true //每次run前是否从redis加载所有fact
+  pubSub: true,
+  updateFactBeforeRun: false //每次run前是否从redis加载所有fact
 })
 
 async function sleep (time) {
@@ -18,7 +15,7 @@ async function sleep (time) {
   })
 }
 
-async function addFact () {
+async function addRule () {
   engine.addRule('test1', {
     conditions: {
       all: [{
@@ -41,6 +38,8 @@ async function addFact () {
         type: 'CONDITION',
         range: ['* 1 0 * * *', '* 59 23 * * *'],
         rule: '*/1 * * * * *'
+        // range: [],
+        // rule: '0 32 19 * * *'
       }
     ]
   })
@@ -48,7 +47,7 @@ async function addFact () {
 
 // 简单使用
 async function simpleTest () {
-  await addFact()
+  await addRule()
 
   await engine.addFact('s3', true)
   await engine.addFact('s2', true)
@@ -60,7 +59,7 @@ async function main () {
   await simpleTest() // console out: fire rule [{"type":"scence-emit","params":{"id":"test1"}}]
   await engine.deleteRule('test1') // stop console
   await sleep(4) // sleep 4s end
-  await addFact() // console fire agine
+  await addRule() // console fire agine
   await sleep(4) // sleep 4s end
   engine.clearRules() // fire rule []
 }
