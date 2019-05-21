@@ -3,7 +3,10 @@ const Engine = require('../src/engine')
 
 const redisCli = new Redis()
 
-const engine = new Engine(redisCli)
+const engine = new Engine({
+  runTimer: true, // 这个进程是否启动定时器
+  pubSub: true
+})
 
 const opt = {
   rule: 1000
@@ -41,7 +44,17 @@ async function mulitFact () {
       event: {
         type: 'scence',
         params: { i }
-      }
+      },
+      timers: [
+        {
+          id: 's124',
+          type: 'CONDITION',
+          range: ['* 50 23 * * *', '* 59 23 * * *'],
+          rule: '* */1 * * * *'
+          // range: [],
+          // rule: '0 32 19 * * *'
+        }
+      ]
     })
   }
 }

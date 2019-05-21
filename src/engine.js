@@ -56,7 +56,7 @@ class Engine extends Jrn {
     if (opt.cache) await this.redis.hdel(msg.RULEMAP, ruleName)
 
     const indexCache = this.ruleMap.get(ruleName)
-    if (!indexCache) return
+    if (!indexCache && indexCache !== '') return
     // 删除 runtime 中rule
     super.removeRule(super.formatRule(this._ruleFormat(JSON.parse(rule)).rule))
     this.ruleMap.delete(ruleName)
