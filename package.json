@@ -1,6 +1,6 @@
 {
   "name": "js-engine",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "a node rule engine with time task",
   "main": "index.js",
   "scripts": {

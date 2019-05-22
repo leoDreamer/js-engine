@@ -118,7 +118,8 @@ class Engine extends Jrn {
    */
   async addFact (factId, value, option) {
     const opt = Object.assign({ pub: false, cache: true }, option)
-    if (opt.cache) await this.redis.hset(msg.FACTMAP, factId, value)
+    // redis中存储fact值的类型，取出后转换
+    if (opt.cache) await this.redis.hset(msg.FACTMAP, factId, `${value}!${typeof value}`)
     super.addFact(factId, value)
 
     // 广播增加fact
@@ -150,7 +151,9 @@ class Engine extends Jrn {
   async addFactsFromCache () {
     const facts = await this.redis.hgetall(msg.FACTMAP)
     Object.keys(facts).forEach(key => {
-      this.addFact(key, JSON.parse(facts[key]), { cache: false })
+      // 转换成真实数据类型的值
+      const value = this._redisFactFormat(facts[key])
+      this.addFact(key, value, { cache: false })
     })
   }
 
@@ -205,6 +208,29 @@ class Engine extends Jrn {
       },
       timers
     }
+  }
+
+  /**
+   * 将redis中fact的值转换为对应类型的值
+   * @param  {string} cacheValue redis hash 中存储的带数据类型的值
+   * @return {any} 转换成对应的值
+   */
+  _redisFactFormat (cacheValue) {
+    const fact = cacheValue.split('!')
+    let ret = fact[0]
+    switch (fact[1]) {
+      case 'number':
+        ret = ret * 1
+        break
+      case 'string':
+        break
+      case 'boolean':
+        ret = ret === 'true'
+        break
+      default:
+        break
+    }
+    return ret
   }
 }
 
