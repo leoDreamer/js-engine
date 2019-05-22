@@ -172,6 +172,34 @@ class Engine extends Jrn {
   }
 
   /**
+   * 删除 runtime 中 规则 + 定时器 + redis cache
+   * @param  {String} ruleName 规则名称
+   * @param  {object string} option 配置项
+   * @param  {boolean} option.pub 同步到各个进程
+   * @return {Promise} resolves when all rules in the array have been evaluated
+   */
+  async stopRule (ruleName, option ) {
+    
+    const opt = Object.assign({ pub: false, cache: true }, option)
+    const rule = await this.redis.hget(msg.RULEMAP, ruleName)
+    if (!rule && rule !=='') return
+
+    const indexCache = this.ruleMap.get(ruleName)
+    if (!indexCache && indexCache !== '') return
+    // 删除 runtime 中rule
+    super.removeRule(super.formatRule(this._ruleFormat(JSON.parse(rule)).rule))
+    this.ruleMap.delete(ruleName)
+    // 删除定时器
+    if (this.runTimer && indexCache.split(',').length > 0) {
+      indexCache.split(',').forEach(t => {
+        this.timer.deleteTimer(t)
+      })
+    }
+    // 广播删除规则
+    if (this.opt.pubSub && opt.pub) this.redisObj.publish('STOPRULE', ruleName)
+  }
+
+  /**
    * 将规则格式化，拆分组合定时规则
    * @param  {Rule[]} array of rules to be evaluated
    * @return {Promise} resolves when all rules in the array have been evaluated

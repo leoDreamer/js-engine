@@ -17,7 +17,8 @@ class Redis {
     return {
       ADDRULE: 'ADDRULE',
       ADDFACT: 'ADDFACT',
-      DELRULE: 'DELRULE'
+      DELRULE: 'DELRULE',
+      STOPRULE: 'STOPRULE'
     }
   }
 
@@ -49,12 +50,15 @@ class Redis {
         case _self.topicMap.DELRULE:
           _self.engine.deleteRule(message, { pub: false })
           break;
+        case _self.topicMap.STOPRULE:
+            _self.engine.stopRule(message, { pub: false })
+            break;
         default:
           break;
       }
     })
     return new Promise((resolve, reject) => {
-      this.subClient.subscribe('ADDRULE','ADDFACT', 'DELRULE', function (err, count) {
+      this.subClient.subscribe('ADDRULE','ADDFACT', 'DELRULE', 'STOPRULE', function (err, count) {
         _self.subed = true
         if (err) reject(err)
         resolve()

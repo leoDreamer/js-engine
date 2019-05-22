@@ -1,15 +1,12 @@
-const Redis = require('ioredis')
 const Engine = require('../src/engine')
-
-const redisCli = new Redis()
 
 const engine = new Engine({
   runTimer: true, // 这个进程是否启动定时器
-  pubSub: true
+  pubSub: false
 })
 
 const opt = {
-  rule: 1000
+  rule: 20000
 }
 
 function getRandor (num) {
@@ -17,7 +14,7 @@ function getRandor (num) {
 }
 
 async function run (id, value) {
-  await engine.addFact(id, value, { cache: false })
+  await engine.addFact(id, value, { pub: false })
   return  engine.run()
     .then(resp => {
       console.log(`run reslut: ${resp.length}`)
@@ -26,51 +23,54 @@ async function run (id, value) {
     })
 }
 
-async function mulitFact () {
+async function mulitRule () {
   const len = opt.rule
-  for(var i = 0; i < len; i++) {
-    await engine.addRule(`scence${i}`, {
-      conditions: {
-        all: [{
-            fact: `s${i}`,
-            operator: 'equal',
-            value: true
-          },{
-            fact: `s${i + 1}`,
-            operator: 'equal',
-            value: true
-          }]
-      },
-      event: {
-        type: 'scence',
-        params: { i }
-      },
-      timers: [
-        {
-          id: 's124',
-          type: 'CONDITION',
-          range: ['* 50 23 * * *', '* 59 23 * * *'],
-          rule: '* */1 * * * *'
-          // range: [],
-          // rule: '0 32 19 * * *'
-        }
-      ]
-    })
+  const each = 50
+  for(var i = 0; i < len / each; i++) {
+    await Promise.all(new Array(each).fill(0).map((e, index) => {
+      return engine.addRule(`scence${i * each + index}`, {
+        conditions: {
+          all: [{
+              fact: `s${i * each + index}`,
+              operator: 'equal',
+              value: true
+            },{
+              fact: `s${i * each + index + 1}`,
+              operator: 'equal',
+              value: true
+            }]
+        },
+        event: {
+          type: 'scence',
+          params: { id: i * each + index }
+        },
+        timers: [
+          {
+            id: `t${i * each + index}`,
+            type: 'CONDITION',
+            range: ['0 50 23 * * *', '0 59 23 * * *'],
+            rule: '0 0 */1 * * *'
+            // range: [],
+            // rule: '0 32 19 * * *'
+          }
+        ]
+      })
+    }))
+    console.log(`add rule ${i * each} ${(process.memoryUsage().rss / 1024 / 1024).toFixed(2)}MB`)
   }
 }
 
 async function batch () {
   console.time('addRule')
-  await mulitFact()
+  await mulitRule()
   console.timeEnd('addRule')
-  for (var i = 0; i < 10000; i++) {
+  for (var i = 0; i < 20000; i++) {
     const id = `s${getRandor(opt.rule)}`
     console.time(id)
     await run(id, true)
+    console.log(`add fact ${i} ${(process.memoryUsage().rss / 1024 / 1024).toFixed(2)}MB`)
     console.timeEnd(id)
   }
 }
 
-batch().then(() => {
-  redisCli.quit()
-})
+batch()

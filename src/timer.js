@@ -8,9 +8,11 @@ class Timer {
   }
 
   addTimer (name, rule, start, end) {
+    console.log(`${name}-${rule}-${start}-${end}`)
     // 同名timer不重复创建
     if (this.timers.has(name)) return
     const timer = schedule.scheduleJob(_.pickBy({ start, end, rule }), function(name, engine){
+      console.log(`[Timer Trigger]: ${name}`)
       engine.run({ [name]: true })
     }.bind(null, name, this.engine))
     this.timers.set(name, timer)
