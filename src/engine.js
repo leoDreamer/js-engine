@@ -94,7 +94,7 @@ class Engine extends Jrn {
     // 创建定时器
     if (this.runTimer) {
       define.timers.forEach(t => {
-        this.timer.addTimer(t.id, t.rule, t.range[0], t.range[1])
+        this.timer.addTimer(t.id, t.rule, t.recurrence)
       })
     }
     // 广播增加规则

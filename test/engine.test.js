@@ -36,10 +36,11 @@ async function addRule () {
       {
         id: 's124',
         type: 'CONDITION',
-        range: ['* 1 0 * * *', '* 59 23 * * *'],
-        rule: '*/1 * * * * *'
-        // range: [],
-        // rule: '0 32 19 * * *'
+        recurrence: { // 时间段触发
+          range: ['8:00', '13:00'],
+          dayofWeek: [0 ,1 ,2, 3, 4, 5, 6], // Starting with Sunday
+        },
+        rule: '*/1 * * * * *' // 时间点触发
       }
     ]
   })
@@ -57,10 +58,11 @@ async function simpleTest () {
 
 async function main () {
   await simpleTest() // console out: fire rule [{"type":"scence-emit","params":{"id":"test1"}}]
+  await sleep(70)
   await engine.deleteRule('test1') // stop console
-  await sleep(4) // sleep 4s end
+  await sleep(70) // sleep 4s end
   await addRule() // console fire agine
-  await sleep(4) // sleep 4s end
+  await sleep(70) // sleep 4s end
   engine.clearRules() // fire rule []
 }
 main()
