@@ -48,10 +48,10 @@ async function mulitRule () {
           {
             id: `t${i * each + index}`,
             type: 'CONDITION',
-            range: ['0 50 23 * * *', '0 59 23 * * *'],
-            rule: '0 0 */1 * * *'
-            // range: [],
-            // rule: '0 32 19 * * *'
+            recurrence: { // 时间段触发
+              range: ['1:00', '2:00'],
+              dayofWeek: [0 ,1 ,2, 3, 4, 5, 6], // Starting with Sunday
+            }
           }
         ]
       })

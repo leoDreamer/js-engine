@@ -36,7 +36,7 @@ class Redis {
   async subAll () {
     const _self = this
     this.subClient.on('message', function (channel, message) {
-      console.log('Receive message %s from channel %s', message, channel)
+      console.log('[EngineSub] Receive message %s from channel %s', message, channel)
       switch (channel) {
         case _self.topicMap.ADDRULE:
           const rule = JSON.parse(message)
@@ -68,7 +68,7 @@ class Redis {
 
   publish (topic, message) {
     if (Object.keys(this.topicMap).includes(topic))
-    console.log(`publish ${topic} ${message}`)
+    console.log(`[EnginePub] ${topic} ${message}`)
     this.pubClient.publish(topic, message)
   }
 }

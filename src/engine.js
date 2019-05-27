@@ -31,8 +31,9 @@ class Engine extends Jrn {
       }
     }, opt)
     this.redisObj = new Redis(this.opt.redis, this)
-    // 存储rulename 和 具体rule/timer的索引map
-    this.ruleMap = new Map()
+    this.ruleMap = new Map() // 存储定时器map
+    this.ruleNameArray = [] // 对应json-rules-engine中rule(一一对应)
+  
     this.runTimer = this.opt.runTimer
     if (this.opt.runTimer) this.timer = new Timer(this)
     this.redis = this.redisObj.client
@@ -55,19 +56,21 @@ class Engine extends Jrn {
     // delete redis cache
     if (opt.cache) await this.redis.hdel(msg.RULEMAP, ruleName)
 
-    const indexCache = this.ruleMap.get(ruleName)
-    if (!indexCache && indexCache !== '') return
+    const timerIndexCache = this.ruleMap.get(ruleName)
+    const ruleIndexCache = this.ruleNameArray.indexOf(ruleName)
     // 删除 runtime 中rule
-    super.removeRule(super.formatRule(this._ruleFormat(JSON.parse(rule)).rule))
+    super.removeRuleByIndex(ruleIndexCache)
     this.ruleMap.delete(ruleName)
+    if (ruleIndexCache > -1) this.ruleNameArray.splice(ruleIndexCache, 1)
     // 删除定时器
-    if (this.runTimer && indexCache.split(',').length > 0) {
-      indexCache.split(',').forEach(t => {
+    if (this.runTimer && timerIndexCache && timerIndexCache.split(',').length > 0) {
+      timerIndexCache.split(',').forEach(t => {
         this.timer.deleteTimer(t)
       })
     }
     // 广播删除规则
     if (this.opt.pubSub && opt.pub) this.redisObj.publish('DELRULE', ruleName)
+    console.log(`[EngineMain] delete rule ${ruleName}`)
   }
 
   /**
@@ -87,6 +90,7 @@ class Engine extends Jrn {
     const define = this._ruleFormat(definition)
 
     super.addRule(define.rule)
+    this.ruleNameArray.push(ruleName)
     this.ruleMap.set(ruleName, `${define.timers.map(t => t.id).join(',')}`)
 
     // save rule in redis
@@ -104,6 +108,7 @@ class Engine extends Jrn {
         value: definition
       }))
     }
+    console.log(`[EngineMain] add rule ${ruleName}`)
     return true
   }
 
@@ -124,6 +129,7 @@ class Engine extends Jrn {
 
     // 广播增加fact
     if (this.opt.pubSub && opt.pub) this.redisObj.publish('ADDFACT', JSON.stringify({ [factId]: value }))
+    console.log(`[EngineMain] add fact ${factId}`)
   }
 
   /**
@@ -132,7 +138,9 @@ class Engine extends Jrn {
   clearRules () {
     super.clearRules()
     this.ruleMap.clear()
+    this.ruleNameArray = []
     if (this.runTimer) this.timer.clear()
+    console.log(`[EngineMain] clear`)
   }
 
   /**
@@ -143,6 +151,7 @@ class Engine extends Jrn {
     Object.keys(rules).forEach(key => {
       this.addRule(key, JSON.parse(rules[key]), { cache: false })
     })
+    console.log(`[EngineMain] add rule from cache`)
   }
 
   /**
@@ -155,6 +164,7 @@ class Engine extends Jrn {
       const value = this._redisFactFormat(facts[key])
       this.addFact(key, value, { cache: false })
     })
+    console.log(`[EngineMain] add fact from cache`)
   }
 
   /**
@@ -179,24 +189,26 @@ class Engine extends Jrn {
    * @return {Promise} resolves when all rules in the array have been evaluated
    */
   async stopRule (ruleName, option ) {
-    
     const opt = Object.assign({ pub: false, cache: true }, option)
     const rule = await this.redis.hget(msg.RULEMAP, ruleName)
     if (!rule && rule !=='') return
 
-    const indexCache = this.ruleMap.get(ruleName)
-    if (!indexCache && indexCache !== '') return
+    const timerIndexCache = this.ruleMap.get(ruleName)
+    const ruleIndexCache = this.ruleNameArray.indexOf(ruleName)
     // 删除 runtime 中rule
-    super.removeRule(super.formatRule(this._ruleFormat(JSON.parse(rule)).rule))
+    super.removeRuleByIndex(ruleIndexCache)
     this.ruleMap.delete(ruleName)
+    if (ruleIndexCache > -1) this.ruleNameArray.splice(ruleIndexCache, 1)
+
     // 删除定时器
-    if (this.runTimer && indexCache.split(',').length > 0) {
-      indexCache.split(',').forEach(t => {
+    if (this.runTimer && timerIndexCache && timerIndexCache.split(',').length > 0) {
+      timerIndexCache.split(',').forEach(t => {
         this.timer.deleteTimer(t)
       })
     }
     // 广播删除规则
     if (this.opt.pubSub && opt.pub) this.redisObj.publish('STOPRULE', ruleName)
+    console.log(`[EngineMain] stop rule ${ruleName}`)
   }
 
   /**

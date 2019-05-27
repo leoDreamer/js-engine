@@ -58,9 +58,10 @@ async function simpleTest () {
 
 async function main () {
   await simpleTest() // console out: fire rule [{"type":"scence-emit","params":{"id":"test1"}}]
-  await sleep(70)
-  await engine.deleteRule('test1') // stop console
-  await sleep(70) // sleep 4s end
+  await sleep(1)
+  await engine.
+  deleteRule('test1') // stop console
+  await sleep(1) // sleep 4s end
   await addRule() // console fire agine
   await sleep(70) // sleep 4s end
   engine.clearRules() // fire rule []
