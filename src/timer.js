@@ -25,7 +25,21 @@ class Timer {
       const end = range[1].split(':')
       timer = this.getRecurrence(name, start[0], start[1], end[0], end[1], dayofWeek, callBack)
     } else {
-      timer = schedule.scheduleJob(rule, callBack)
+      let formatRule = rule
+      const ruleArr = rule.split(' ')
+      if (ruleArr.length === 7) {
+        // 7位cron表达式格式化成6位
+        if (ruleArr[6] === '*') {
+          // dayofweek 重复
+          ruleArr.pop()
+          formatRule = ruleArr.join(' ')
+        } else {
+          // 固定时间点
+          formatRule = new Date(ruleArr[6], ruleArr[4] - 1, ruleArr[3], ruleArr[2], ruleArr[1], ruleArr[0])
+        }
+
+      }
+      timer = schedule.scheduleJob(formatRule, callBack)
     }
     console.log(`[EngineTimerAdd]: ${name}`)
     this.timers.set(name, timer)

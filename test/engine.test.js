@@ -40,7 +40,8 @@ async function addRule () {
           range: ['8:00', '13:00'],
           dayofWeek: [0 ,1 ,2, 3, 4, 5, 6], // Starting with Sunday
         },
-        rule: '*/1 * * * * *' // 时间点触发
+        // rule: '0 34 16 ? * Wed *' // dayofDay触发
+        // rule: '0 36 16 29 5 * 2019' // 时间点触发
       }
     ]
   })
@@ -67,4 +68,3 @@ async function main () {
   engine.clearRules() // fire rule []
 }
 main()
-
