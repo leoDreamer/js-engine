@@ -2,6 +2,12 @@
 
 ## 使用
  + 规则定义具体参见 [json-rules-engine](https://github.com/CacheControl/json-rules-engine/blob/master/docs/rules.md),定时器相关的规则参见测试文件`/test/engine.test.js`
+ + 关于定时器，需要监听Engine实例上的`timer`事件，参数为触发的timer factId
+ ```javascript
+ engine.on('timer', (data) => {
+  console.log(`engine on timer ${data}`)
+})
+ ```
 
 ## 多进程多节点下的坑
   + 规则/规则对应fact 如果不移除则会在多次`run`时多次触发，建议触发的规则从runtime中移除

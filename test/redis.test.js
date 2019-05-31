@@ -4,7 +4,7 @@ const redis = new Redis()
 
 async function main() {
   await redis.subAll()
-  redis.publish('ADDRULE', 'hello world')
+  await redis.publish('ADDRULE', JSON.stringify({ msg: 'hello world' }))
 }
 
 main()

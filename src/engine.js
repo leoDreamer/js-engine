@@ -69,7 +69,7 @@ class Engine extends Jrn {
       })
     }
     // 广播删除规则
-    if (this.opt.pubSub && opt.pub) this.redisObj.publish('DELRULE', ruleName)
+    if (this.opt.pubSub && opt.pub) this.redisObj.publish('DELRULE', JSON.stringify({ name: ruleName }))
     console.log(`[EngineMain] delete rule ${ruleName}`)
   }
 
@@ -207,7 +207,7 @@ class Engine extends Jrn {
       })
     }
     // 广播删除规则
-    if (this.opt.pubSub && opt.pub) this.redisObj.publish('STOPRULE', ruleName)
+    if (this.opt.pubSub && opt.pub) this.redisObj.publish('STOPRULE', JOSN.stringify({ name: ruleName }))
     console.log(`[EngineMain] stop rule ${ruleName}`)
   }
 

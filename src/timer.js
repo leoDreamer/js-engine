@@ -15,7 +15,7 @@ class Timer {
 
     const callBack = function(name, engine){
       console.log(`[EngineTimerTrigger]: ${name}`)
-      engine.run({ [name]: true })
+      engine.emit('timer', name)
     }.bind(null, name, this.engine)
 
     let timer 
@@ -82,6 +82,7 @@ class Timer {
 
   // 将一位(数字/字符)转成两位，满足moment格式要求
   _parseNum (num) {
+    if ((num + '').length === 2) return num
     return parseInt(num) < 10
       ? (parseInt(num) === 0 ? '00' :'0' + num)
       : num
