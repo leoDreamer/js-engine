@@ -51,10 +51,9 @@ class Engine extends Jrn {
   async deleteRule (ruleName, option ) {
     const opt = Object.assign({ pub: false, cache: true }, option)
     const rule = await this.redis.hget(msg.RULEMAP, ruleName)
-    if (!rule && rule !=='') return
 
     // delete redis cache
-    if (opt.cache) await this.redis.hdel(msg.RULEMAP, ruleName)
+    if (opt.cache && rule) await this.redis.hdel(msg.RULEMAP, ruleName)
 
     const timerIndexCache = this.ruleMap.get(ruleName)
     const ruleIndexCache = this.ruleNameArray.indexOf(ruleName)
@@ -70,7 +69,7 @@ class Engine extends Jrn {
     }
     // 广播删除规则
     if (this.opt.pubSub && opt.pub) this.redisObj.publish('DELRULE', JSON.stringify({ name: ruleName }))
-    console.log(`[EngineMain] delete rule ${ruleName}`)
+    console.log(`[EngineMain ${process.pid}] delete rule ${ruleName}`)
   }
 
   /**
@@ -108,7 +107,7 @@ class Engine extends Jrn {
         value: definition
       }))
     }
-    console.log(`[EngineMain] add rule ${ruleName}`)
+    console.log(`[EngineMain ${process.pid}] add rule ${ruleName}`)
     return true
   }
 
@@ -129,7 +128,7 @@ class Engine extends Jrn {
 
     // 广播增加fact
     if (this.opt.pubSub && opt.pub) this.redisObj.publish('ADDFACT', JSON.stringify({ [factId]: value }))
-    console.log(`[EngineMain] add fact ${factId}`)
+    console.log(`[EngineMain ${process.pid}] add fact ${factId}`)
   }
 
   /**
@@ -140,7 +139,7 @@ class Engine extends Jrn {
     this.ruleMap.clear()
     this.ruleNameArray = []
     if (this.runTimer) this.timer.clear()
-    console.log(`[EngineMain] clear`)
+    console.log(`[EngineMain ${process.pid}] clear`)
   }
 
   /**
@@ -151,7 +150,7 @@ class Engine extends Jrn {
     Object.keys(rules).forEach(key => {
       this.addRule(key, JSON.parse(rules[key]), { cache: false })
     })
-    console.log(`[EngineMain] add rule from cache`)
+    console.log(`[EngineMain ${process.pid}] add rule from cache`)
   }
 
   /**
@@ -164,7 +163,7 @@ class Engine extends Jrn {
       const value = this._redisFactFormat(facts[key])
       this.addFact(key, value, { cache: false })
     })
-    console.log(`[EngineMain] add fact from cache`)
+    console.log(`[EngineMain ${process.pid}] add fact from cache`)
   }
 
   /**
@@ -207,8 +206,8 @@ class Engine extends Jrn {
       })
     }
     // 广播删除规则
-    if (this.opt.pubSub && opt.pub) this.redisObj.publish('STOPRULE', JOSN.stringify({ name: ruleName }))
-    console.log(`[EngineMain] stop rule ${ruleName}`)
+    if (this.opt.pubSub && opt.pub) this.redisObj.publish('STOPRULE', JSON.stringify({ name: ruleName }))
+    console.log(`[EngineMain ${process.pid}] stop rule ${ruleName}`)
   }
 
   /**
