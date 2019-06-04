@@ -1,5 +1,6 @@
 const Ioredis = require('ioredis')
 const assert = require('assert')
+const Queue = require('promise-queue-plus')
 
 class Redis {
   constructor(config = {}, engine) {
@@ -13,6 +14,9 @@ class Redis {
     this.subClient = this._getClient()
     this.pubClient = this._getClient()
     this.pid = process.pid
+    this.promiseQueue = Queue(1, {
+      autoRun:true
+    })
   }
 
   get topicMap () {
@@ -38,28 +42,28 @@ class Redis {
   async subAll () {
     const _self = this
     this.subClient.on('message', async function (channel, message) {
-      console.log(`[EngineSub ${this.pid}] Receive message ${message} from channel ${channel}`)
       const msg = JSON.parse(message)
       // 本进程的pub不做sub处理
-      // if (msg.pid + '' === process.pid + '') return
+      if (msg.pid + '' === process.pid + '') return
+      console.log(`[EngineSub ${_self.pid}] Receive message ${message} from channel ${channel}`)
       delete msg.pid
       switch (channel) {
         case _self.topicMap.ADDRULE:
           assert(msg.name && msg.value, `[EngineSub ${_self.pid}] illegal ADDURLE param ${message}`)
-          await _self.engine.addRule(msg.name, msg.value, { pub: false, cache: false })
+          _self.promiseQueue.push(_self.engine.addRule.bind(_self.engine, msg.name, msg.value, { pub: false, cache: false }))
           break;
         case _self.topicMap.ADDFACT:
-          assert(msg.name && msg.value, `[EngineSub ${_self.pid}] illegal ADDFACT param ${message}`)
           const key = Object.keys(msg)[0]
-          await _self.engine.addFact(key, msg[key], { pub: false, cache: false })
+          assert(msg.key, `[EngineSub ${_self.pid}] illegal ADDFACT param ${message}`)
+          _self.promiseQueue.push(_self.engine.addFact.bind(_self.engine, key, msg[key], { pub: false, cache: false }))
           break;
         case _self.topicMap.DELRULE:
           assert(msg.name, `[EngineSub ${_self.pid}] illegal DELRULE param ${message}`)
-          await _self.engine.deleteRule(msg.name, { pub: false, cache: false })
+          _self.promiseQueue.push(_self.engine.deleteRule.bind(_self.engine, msg.name, { pub: false, cache: false }))
           break;
         case _self.topicMap.STOPRULE:
           assert(msg.name, `[EngineSub ${_self.pid}] illegal STOPRULE param ${message}`)
-          await _self.engine.stopRule(msg.name, { pub: false })
+          _self.promiseQueue.push(_self.engine.stopRule.bind(_self.engine, msg.name, { pub: false }))
           break;
         default:
           break;

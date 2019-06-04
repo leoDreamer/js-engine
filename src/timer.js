@@ -14,7 +14,7 @@ class Timer {
     if (this.timers.has(name)) return
 
     const callBack = function(name, engine){
-      console.log(`[EngineTimerTrigger]: ${name}`)
+      console.log(`[EngineTimerTrigger ${process.pid}]: ${name}`)
       engine.emit('timer', name)
     }.bind(null, name, this.engine)
 
@@ -69,7 +69,7 @@ class Timer {
     const nestTimer = this.nestTimers.get(name)
     if (nestTimer) nestTimer.cancel()
     this.timers.delete(name)
-    console.log(`[EngineTimerDel]: ${name}`)
+    console.log(`[EngineTimerDel ${process.pid}]: ${name}`)
   }
 
   clear () {
@@ -77,7 +77,7 @@ class Timer {
       t.cancel()
     })
     this.timers.clear()
-    console.log(`[EngineTimerClear]`)
+    console.log(`[EngineTimerClear ${process.pid}]`)
   }
 
   // 将一位(数字/字符)转成两位，满足moment格式要求
