@@ -56,7 +56,8 @@ async function addRule () {
       all: [{
           fact: `s2`,
           operator: 'equal',
-          value: true
+          value: true,
+          path: '.test'
         },{
           fact: `s3`,
           operator: 'equal',
@@ -65,7 +66,7 @@ async function addRule () {
     },
     event: {
       type: `scence-emit`,
-      params: { id: 'test1' }
+      params: { id: 'test2' }
     },
     timers: [
       {
@@ -87,7 +88,7 @@ async function simpleTest () {
   await addRule()
 
   await engine.addFact('s3', true)
-  await engine.addFact('s2', true)
+  await engine.addFact('s2', { test:true })
 
   return engine.run()
 }

@@ -54,7 +54,7 @@ class Redis {
           break;
         case _self.topicMap.ADDFACT:
           const key = Object.keys(msg)[0]
-          assert(msg.key, `[EngineSub ${_self.pid}] illegal ADDFACT param ${message}`)
+          assert(key, `[EngineSub ${_self.pid}] illegal ADDFACT param ${message}`)
           _self.promiseQueue.push(_self.engine.addFact.bind(_self.engine, key, msg[key], { pub: false, cache: false }))
           break;
         case _self.topicMap.DELRULE:

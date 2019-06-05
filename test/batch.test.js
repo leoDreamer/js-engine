@@ -63,14 +63,17 @@ async function mulitRule () {
 async function batch () {
   console.time('addRule')
   await mulitRule()
+  // await engine.addRulesFromCache()
   console.timeEnd('addRule')
-  for (var i = 0; i < 20000; i++) {
-    const id = `s${getRandor(opt.rule)}`
-    console.time(id)
-    await run(id, true)
-    console.log(`add fact ${i} ${(process.memoryUsage().rss / 1024 / 1024).toFixed(2)}MB`)
-    console.timeEnd(id)
+  for (var i = 0; i < 60000; i++) {
+    const id = `s${i}`
+    await engine.addFact(id, true)
   }
+
+  console.time('id')
+  await engine.run()
+  console.log(`add fact done ${(process.memoryUsage().rss / 1024 / 1024).toFixed(2)}MB`)
+  console.timeEnd('id')
 }
 
 batch()
