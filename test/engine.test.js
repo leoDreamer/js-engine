@@ -80,7 +80,7 @@ async function addRule () {
         // rule: '0 36 16 29 5 * 2019' // 时间点触发
       }
     ]
-  })
+  }, { pub: true })
 }
 
 // 简单使用
@@ -88,18 +88,19 @@ async function simpleTest () {
   await addRule()
 
   await engine.addFact('s3', true)
-  await engine.addFact('s2', { test:true })
+  await engine.addFact('s2', { test: true })
 
   return engine.run()
 }
 
 async function main () {
   await simpleTest() // console out: fire rule [{"type":"scence-emit","params":{"id":"test1"}}]
-  await sleep(1)
-  await engine.deleteRule('test1') // stop console
-  await sleep(1) // sleep 4s end
+  await sleep(6)
+  await engine.deleteRule('test1', { pub: true }) // stop console
+  await sleep(6) // sleep 4s end
   await addRule() // console fire agine
   await sleep(70) // sleep 4s end
-  engine.clearRules() // fire rule []
+  await engine.stopRule('test', { pub: true })
+  await engine.clearRules() // fire rule []
 }
 main()

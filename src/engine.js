@@ -57,16 +57,25 @@ class Engine extends Jrn {
 
     const timerIndexCache = this.ruleMap.get(ruleName)
     const ruleIndexCache = this.ruleNameArray.indexOf(ruleName)
+
     // 删除 runtime 中rule
     super.removeRuleByIndex(ruleIndexCache)
     this.ruleMap.delete(ruleName)
     if (ruleIndexCache > -1) this.ruleNameArray.splice(ruleIndexCache, 1)
+
     // 删除定时器
     if (this.runTimer && timerIndexCache && timerIndexCache.split(',').length > 0) {
       timerIndexCache.split(',').forEach(t => {
         this.timer.deleteTimer(t)
       })
     }
+
+    // redis fact address map缓存 factId 自增
+    const { factIds } = this._ruleFormat(JSON.parse(rule))
+    if (opt.pub && factIds.length > 0) {
+      await this._factAddrMap(factIds, -1)
+    }
+
     // 广播删除规则
     if (this.opt.pubSub && opt.pub) this.redisObj.publish('DELRULE', JSON.stringify({ name: ruleName }))
     console.log(`[EngineMain ${process.pid}] delete rule ${ruleName}`)
@@ -79,24 +88,24 @@ class Engine extends Jrn {
    * @param  {object string} option 配置项
    * @param  {boolean} option.pub 同步到各个进程
    * @param  {boolean} option.cache 缓存到redis
-   * @return {Promise} resolves when all rules in the array have been evaluated
+   * @return {Array} 当前规则所需的 factId 数组
    */
   async addRule (ruleName, definition, option) {
     const opt = Object.assign({ pub: false, cache: true }, option)
     // add rule in JRN
     // 同名规则不重复创建，直接返回
     if (this.ruleMap.has(ruleName)) return 
-    const define = this._ruleFormat(definition)
+    const { rule, timers, factIds } = this._ruleFormat(definition)
 
-    super.addRule(define.rule)
+    super.addRule(rule)
     this.ruleNameArray.push(ruleName)
-    this.ruleMap.set(ruleName, `${define.timers.map(t => t.id).join(',')}`)
+    this.ruleMap.set(ruleName, `${timers.map(t => t.id).join(',')}`)
 
     // save rule in redis
     if (opt.cache) await this.redis.hset(msg.RULEMAP, ruleName, JSON.stringify(definition))
     // 创建定时器
     if (this.runTimer) {
-      define.timers.forEach(t => {
+      timers.forEach(t => {
         this.timer.addTimer(t.id, t.rule, t.recurrence)
       })
     }
@@ -107,8 +116,15 @@ class Engine extends Jrn {
         value: definition
       }))
     }
+
+    // redis fact address map缓存 factId 自增
+    // 主动广播的是主执行进程需操作redis，不广播的为收到信息同步操作进程不操作redis
+    if (opt.pub) {
+      await this._factAddrMap(factIds, 1)
+    }
+
     console.log(`[EngineMain ${process.pid}] add rule ${ruleName}`)
-    return true
+    return factIds
   }
 
   /**
@@ -122,8 +138,13 @@ class Engine extends Jrn {
    */
   async addFact (factId, value, option) {
     const opt = Object.assign({ pub: false, cache: true }, option)
+
+    // 查询是否是有效设定了rule的fact
+    const isAvailable = await this.redis.hget(msg.FACTADDRMAP, factId)
+    if (!isAvailable) return console.log(`[EngineMain] unused fact ${factId}`)
+
     // redis中存储fact值的类型，取出后转换
-    if (opt.cache) await this.redis.hset(msg.FACTMAP, factId, `${value}!${typeof value}`)
+    if (opt.cache) await this.redis.hset(msg.FACTMAP, factId, `${JSON.stringify(value)}!${this._getType(value)}`)
     super.addFact(factId, value)
 
     // 广播增加fact
@@ -134,11 +155,12 @@ class Engine extends Jrn {
   /**
    * 清理runtime中的规则(不会清理缓存)
    */
-  clearRules () {
+  async clearRules () {
     super.clearRules()
     this.ruleMap.clear()
     this.ruleNameArray = []
     if (this.runTimer) this.timer.clear()
+    await this.redis.del(msg.FACTADDRMAP)
     console.log(`[EngineMain ${process.pid}] clear`)
   }
 
@@ -190,10 +212,10 @@ class Engine extends Jrn {
   async stopRule (ruleName, option ) {
     const opt = Object.assign({ pub: false, cache: true }, option)
     const rule = await this.redis.hget(msg.RULEMAP, ruleName)
-    if (!rule && rule !=='') return
 
     const timerIndexCache = this.ruleMap.get(ruleName)
     const ruleIndexCache = this.ruleNameArray.indexOf(ruleName)
+
     // 删除 runtime 中rule
     super.removeRuleByIndex(ruleIndexCache)
     this.ruleMap.delete(ruleName)
@@ -205,8 +227,16 @@ class Engine extends Jrn {
         this.timer.deleteTimer(t)
       })
     }
+
+    // redis fact address map缓存 factId 自增
+    const { factIds } = this._ruleFormat(JSON.parse(rule))
+    if (opt.pub && factIds.length > 0) {
+      await this._factAddrMap(factIds, -1)
+    }
+
     // 广播删除规则
     if (this.opt.pubSub && opt.pub) this.redisObj.publish('STOPRULE', JSON.stringify({ name: ruleName }))
+
     console.log(`[EngineMain ${process.pid}] stop rule ${ruleName}`)
   }
 
@@ -217,7 +247,25 @@ class Engine extends Jrn {
    */
   _ruleFormat (definition) {
     const { timers, conditions, event } = definition
-    if (!timers) return { rule: definition, timers: [] }
+    const factIds = []
+
+    // 遍历conditions获取所有factId
+    function traverse (arr) {
+      // console.log('1111', JSON.stringify(arr))
+      arr.forEach(each => {
+        const keys = Object.keys(each)
+        if (keys.length === 1 && ['all', 'any'].includes(keys[0])) {
+          traverse(each[keys[0]]) 
+        } else {
+          factIds.push(each.fact)
+        }
+      })
+    }
+    Object.keys(conditions).forEach(key => {
+      traverse(conditions[key])
+    })
+
+    if (!timers) return { rule: definition, timers: [], factIds }
 
     // 将定时 作为 true/false 加入json-rule
     // 条件定时器 直接加入json-rule的condition中
@@ -226,6 +274,7 @@ class Engine extends Jrn {
     const rules = conditions[conditionsKey]
     let limitTimer = null
     timers.forEach(t => {
+      factIds.push(t.id)
       const rule = {
         fact: t.id,
         operator: 'equal',
@@ -245,7 +294,8 @@ class Engine extends Jrn {
           ? { all: [ limitTimer, { [conditionsKey]: rules } ] }
           : { [conditionsKey]: rules }
       },
-      timers
+      timers,
+      factIds
     }
   }
 
@@ -266,10 +316,38 @@ class Engine extends Jrn {
       case 'boolean':
         ret = ret === 'true'
         break
+      case 'array' || 'object':
+        ret = JSON.parse(ret)
       default:
         break
     }
     return ret
+  }
+
+  /**
+   * 检测参数的数据类型
+   * @param  {any} value 待检测数据类型的数据
+   * @return {string} 小写的数据类型
+   */
+  _getType (value) {
+    let ret = typeof value
+    if (['number', 'string', 'boolean', 'undefined'].includes(ret)) return ret
+    if (value instanceof Array) return 'array'
+    if (value instanceof Object) return 'object'
+  }
+
+  /**
+   * 更改fact address map 缓存
+   * @param  {array} factIds factId 数组
+   * @param  {number} inc 增量
+   * @return {null}
+   */
+  _factAddrMap (factIds, inc) {
+    const pipeline = this.redis.pipeline()
+    factIds.forEach(id => {
+      pipeline.hincrby(msg.FACTADDRMAP, id, inc)
+    })
+    return pipeline.exec()
   }
 }
 
