@@ -71,9 +71,11 @@ class Engine extends Jrn {
     }
 
     // redis fact address map缓存 factId 自增
-    const { factIds } = this._ruleFormat(JSON.parse(rule))
-    if (opt.pub && factIds.length > 0) {
-      await this._factAddrMap(factIds, -1)
+    if (rule) {
+      const { factIds } = this._ruleFormat(JSON.parse(rule))
+      if (opt.pub && factIds.length > 0) {
+        await this._factAddrMap(factIds, -1)
+      }
     }
 
     // 广播删除规则
@@ -229,9 +231,11 @@ class Engine extends Jrn {
     }
 
     // redis fact address map缓存 factId 自增
-    const { factIds } = this._ruleFormat(JSON.parse(rule))
-    if (opt.pub && factIds.length > 0) {
-      await this._factAddrMap(factIds, -1)
+    if (rule) {
+      const { factIds } = this._ruleFormat(JSON.parse(rule))
+      if (opt.pub && factIds.length > 0) {
+        await this._factAddrMap(factIds, -1)
+      }
     }
 
     // 广播删除规则
